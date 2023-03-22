@@ -193,7 +193,7 @@ def test_montecarlo19():
 
 
 root = tk.Tk()
-root.geometry("250x150")
+root.geometry("250x100")
 root.attributes('-topmost',True)
 cards_label = tk.Label(root, text= f"Yout cards: ",font=('Helvetica bold', 12))
 cards_label.pack()
