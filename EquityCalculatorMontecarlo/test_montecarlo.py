@@ -2,18 +2,16 @@
 
 import time
 import cppimport
-#import pytest
+import pytest
 
-#start_comp = time.perf_counter()
+start_comp = time.perf_counter()
 calculator = cppimport.imp("Scoring")
-#finish_comp = time.perf_counter()
+finish_comp = time.perf_counter()
 
-def _runner(my_cards, cards_on_table, players):
+def _runner(my_cards, cards_on_table, players, expected_result):
     """Montecarlo test"""
     if len(cards_on_table) == 0:
         cards_on_table = {'\0'}
-    if len(my_cards) == 0:
-        my_cards = {'\0'}
     equity = calculator.montecarlo(my_cards, cards_on_table, players, 10000)
     # assert equity == pytest.approx(expected_result, abs=1)
 
