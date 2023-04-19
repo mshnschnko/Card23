@@ -237,5 +237,6 @@ if __name__ == "__main__":
     # eq_label.pack()
     # start_button = Button(root, text="start", command=lambda: clicked(eq_label, cards_label, start_button))
     # start_button.pack()
+    
     root.after(1000, get_rec)
     root.mainloop()
