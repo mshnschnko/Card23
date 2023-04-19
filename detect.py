@@ -36,6 +36,8 @@ from pathlib import Path
 
 import torch
 
+import EquityCalculatorMontecarlo.convert_results as converter
+
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv3 root directory
 if str(ROOT) not in sys.path:
@@ -49,20 +51,53 @@ from utils.general import (LOGGER, Profile, check_file, check_img_size, check_im
 from utils.plots import Annotator, colors, save_one_box
 from utils.torch_utils import select_device, smart_inference_mode
 
+# class Namespace:
+#     def __init__(self, **kwargs):
+#         self.__dict__.update(kwargs)
+#
+# def get_opt_by_default():
+#     opt = Namespace(agnostic_nms=False,
+#                     augment=False,
+#                     classes=None,
+#                     conf_thres=0.25,
+#                     data='./data/testPoker.yaml',
+#                     device='',
+#                     dnn=False,
+#                     exist_ok=False,
+#                     half=False,
+#                     hide_conf=False,
+#                     hide_labels=False,
+#                     imgsz=[640, 640],
+#                     iou_thres=0.45,
+#                     line_thickness=3,
+#                     max_det=1000,
+#                     name='recommendFile',
+#                     nosave=True,
+#                     project='.',
+#                     save_conf=True,
+#                     save_crop=False,
+#                     save_txt=True,
+#                     source='../dataset/poker_video.mp4',
+#                     update=False,
+#                     vid_stride=50,
+#                     view_img=False,
+#                     visualize=False,
+#                     weights=['rotBestLast.pt'])
+#     return opt
 
 @smart_inference_mode()
 def run(
-        weights=ROOT / 'yolov5s.pt',  # model path or triton URL
-        source=ROOT / 'data/images',  # file/dir/URL/glob/screen/0(webcam)
-        data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
-        imgsz=(640, 640),  # inference size (height, width)
+        weights=ROOT / 'bestLast.pt',  # model path or triton URL
+        source=ROOT / './dataset/test_for_calculator/Screenshot_2.jpg',  # file/dir/URL/glob/screen/0(webcam)
+        data=ROOT / 'data/testPoker.yaml',  # dataset.yaml path
+        imgsz=(720, 1280 ),  # inference size (height, width)
         conf_thres=0.25,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
         max_det=1000,  # maximum detections per image
         device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
-        view_img=False,  # show results
-        save_txt=False,  # save results to *.txt
-        save_conf=False,  # save confidences in --save-txt labels
+        view_img=True,  # show results
+        save_txt=True,  # save results to *.txt
+        save_conf=True,  # save confidences in --save-txt labels
         save_crop=False,  # save cropped prediction boxes
         nosave=False,  # do not save images/videos
         classes=None,  # filter by class: --class 0, or --class 0 2 3
@@ -70,18 +105,22 @@ def run(
         augment=False,  # augmented inference
         visualize=False,  # visualize features
         update=False,  # update all models
-        project=ROOT / 'runs/detect',  # save results to project/name
-        name='exp',  # save results to project/name
+        project='.',  # save results to project/name
+        name='recommendFile',  # save results to project/name
         exist_ok=False,  # existing project/name ok, do not increment
-        line_thickness=3,  # bounding box thickness (pixels)
+        line_thickness=1,  # bounding box thickness (pixels)
         hide_labels=False,  # hide labels
         hide_conf=False,  # hide confidences
         half=False,  # use FP16 half-precision inference
         dnn=False,  # use OpenCV DNN for ONNX inference
-        vid_stride=1,  # video frame-rate stride
+        vid_stride=200,  # video frame-rate stride
+        save_image=True,
+        recommend=True,
+        logger=True
 ):
     source = str(source)
-    save_img = not nosave and not source.endswith('.txt')  # save inference images
+    # save_img = not nosave and not source.endswith('.txt')  # save inference images
+    save_img = save_image
     is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
     is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
     webcam = source.isnumeric() or source.endswith('.streams') or (is_url and not is_file)
@@ -90,9 +129,10 @@ def run(
         source = check_file(source)  # download
 
     # Directories
-    save_dir = increment_path(Path(project) / name, exist_ok=exist_ok)  # increment run
-    (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
-    (save_dir / 'img' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)
+    save_dir = (Path(project) / name)  # increment run
+    #save_dir = './EquityCalculatorMontecarlo/'
+    # (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
+    # (save_dir / 'img' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)
 
     # Load model
     device = select_device(device)
@@ -146,7 +186,8 @@ def run(
 
             p = Path(p)  # to Path
             save_path = str(save_dir / p.name)  # im.jpg
-            txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
+            # txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # im.txt
+            txt_path = str(save_dir / 'label')
             s += '%gx%g ' % im.shape[2:]  # print string
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             imc = im0.copy() if save_crop else im0  # for save_crop
@@ -160,11 +201,15 @@ def run(
                     n = (det[:, 5] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
 
+                if os.path.exists(f'{txt_path}.txt'):
+                    os.remove(f'{txt_path}.txt')
+
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
+
                         with open(f'{txt_path}.txt', 'a') as f:
                             f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
@@ -189,6 +234,8 @@ def run(
                     cv2.waitKey()  # 1 millisecond
                 # cv2.imwrite(str(save_dir / 'labels/' ) + ('' if dataset.mode == 'image' else f'_{frame}' ), im0)
 
+            if recommend:
+                converter.convert(f'{txt_path}.txt')
 
             # Save results (image with detections)
             if save_img:
@@ -210,14 +257,16 @@ def run(
                     vid_writer[i].write(im0)
 
         # Print time (inference-only)
-        LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
+        if logger:
+            LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
 
     # Print results
-    t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
-    LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
-    if save_txt or save_img:
-        s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
-        LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
+    if logger:
+        t = tuple(x.t / seen * 1E3 for x in dt)  # speeds per image
+        LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
+        if save_txt or save_img:
+            s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
+            LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
     if update:
         strip_optimizer(weights[0])  # update model (to fix SourceChangeWarning)
 
@@ -230,7 +279,7 @@ def parse_opt():
                         default=ROOT / 'yolov3-tiny.pt',
                         help='model path or triton URL')
     parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob/screen/0(webcam)')
-    parser.add_argument('--data', type=str, default=ROOT / 'data/testPoker.yaml', help='(optional) dataset.yaml path')
+    parser.add_argument('--data', type=str, default=ROOT / 'data/poker.yaml', help='(optional) dataset.yaml path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
     parser.add_argument('--iou-thres', type=float, default=0.45, help='NMS IoU threshold')
@@ -261,11 +310,20 @@ def parse_opt():
     return opt
 
 
-def main(opt):
+
+def detect(opt):
+    # opt = get_opt_by_default()
     check_requirements(exclude=('tensorboard', 'thop'))
-    run(**vars(opt))
+    # run(**vars(opt))
+    run()
 
+# def main(opt):
+#     check_requirements(exclude=('tensorboard', 'thop'))
+#     run(**vars(opt))
 
-if __name__ == "__main__":
-    opt = parse_opt()
-    main(opt)
+#
+# if __name__ == "__main__":
+#     # opt = parse_opt()
+#     opt = get_opt_by_default()
+#     main(opt)
+
