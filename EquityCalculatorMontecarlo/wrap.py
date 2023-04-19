@@ -1,7 +1,7 @@
 import cppimport
 import time
 import tkinter as tk
-from overlay import Window
+# from overlay import Window
 
 mc = cppimport.imp("Scoring")
 
@@ -29,15 +29,16 @@ def avg_eq(my_cards, cards_on_table, players):
 
 
 if __name__ == "__main__":
+    pass
     # tic = time.perf_counter()
-    my_cards = {'3H', '3S'}
-    cards_on_table = {'8S', '4S', 'QH', '8C', '4H'}
-    players = 2
-    eq = _run(my_cards, cards_on_table, players)
-    win = Window()
-    label = tk.Label(win.root, text=f"Equity =  {str(eq)}%")
-    label.pack()
-    Window.launch()
+    # my_cards = {'3H', '3S'}
+    # cards_on_table = {'8S', '4S', 'QH', '8C', '4H'}
+    # players = 2
+    # eq = _run(my_cards, cards_on_table, players)
+    # win = Window()
+    # label = tk.Label(win.root, text=f"Equity =  {str(eq)}%")
+    # label.pack()
+    # Window.launch()
     # avg_eq(my_cards, cards_on_table, players)
     # _run(my_cards, cards_on_table, players)
     # print(f"общее время: {time.perf_counter() - tic:0.4f}")
